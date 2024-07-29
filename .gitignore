@@ -1,0 +1,6 @@
+*.jpg
+*.json.xz
+*.txt
+hiyotan928_official_posts
+.env
+__pycache__
