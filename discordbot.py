@@ -43,19 +43,29 @@ async def download_and_post():
         last_check_time = load_last_check_time()
         new_last_check_time = last_check_time
 
+        post_dir = f"{username}_posts"
+        story_dir = f"{username}_stories"
+
         print("Downloading posts...")
+        posts = []
+        stories = []    
+
         for post in profile.get_posts():
             post_time = post.date_utc
             if last_check_time is None or post_time > last_check_time:
-                post_dir = f"{username}_posts"
+                
                 if not os.path.exists(post_dir):
                     os.makedirs(post_dir)
                 L.download_post(post, target=post_dir)
-                await post_all_media_to_discord(channel, post_dir, post)
+                posts.append(post)
                 if new_last_check_time is None or post_time > new_last_check_time:
                     new_last_check_time = post_time
             else:
                 break
+        
+        posts.reverse()
+        for post in posts:
+            await post_all_media_to_discord(channel, post_dir, post)
         
         # print("Downloading reels...")
         # for reel in profile.get_igtv_posts():
@@ -74,15 +84,20 @@ async def download_and_post():
             for item in story.get_items():
                 item_time = item.date_utc
                 if last_check_time is None or item_time > last_check_time:
-                    story_dir = f"{username}_stories"
+                    
                     if not os.path.exists(story_dir):
                         os.makedirs(story_dir)
                     L.download_storyitem(item, target=story_dir)
-                    await post_all_media_to_discord(channel, story_dir, item)
+                    stories.append(item)
                     if new_last_check_time is None or item_time > new_last_check_time:
                         new_last_check_time = item_time
                 else:
                     break
+        
+        stories.reverse()
+
+        for story in stories:
+            await post_all_media_to_discord(channel, story_dir, story)
 
         if new_last_check_time:
             save_last_check_time(new_last_check_time)
@@ -109,14 +124,27 @@ async def post_all_media_to_discord(channel, post_dir, post):
     if media_files:
         files = [discord.File(fp, filename=os.path.basename(fp)) for fp in media_files]
         instagram_link = f"https://www.instagram.com/p/{post.shortcode}/"
-        await channel.send(content=f"New post from {username}:\n{instagram_link}", files=files)
+        await channel.send(content=f"はまひよグラムが更新されました！\n{instagram_link}", files=files)
 
 
 def compress_video(input_path, output_path):
+    target_size = 8 * 1024 * 1024  # 8MB
     clip = VideoFileClip(input_path)
     clip_resized = clip.resize(width=480)  # サイズを小さくして圧縮
-    clip_resized.write_videofile(output_path, codec='libx264', audio_codec='aac', bitrate='500k')
 
+    # 初期ビットレートを計算
+    duration = clip.duration
+    initial_bitrate = 500 * 1024  # 500kbps in bits
+    bitrate = initial_bitrate
+
+    clip_resized.write_videofile(output_path, codec='libx264', audio_codec='aac', bitrate=f'{bitrate}k')
+
+    while os.path.getsize(output_path) > target_size:
+        # ビットレートを下げて再試行
+        bitrate -= 50 * 1024  # 50kbps 減らす
+        if bitrate <= 0:
+            raise ValueError("Could not compress the video below 8MB")
+        clip_resized.write_videofile(output_path, codec='libx264', audio_codec='aac', bitrate=f'{bitrate}k')
 
 @client.event
 async def on_ready():
