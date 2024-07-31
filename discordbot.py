@@ -154,6 +154,7 @@ def compress_video(input_path, output_path):
 async def on_ready():
     print(f'Logged in as {client.user.name}')
     client.loop.create_task(download_and_post())
+    client.loop.create_task(download_and_post_stories())
 
 # ボットを実行
 client.run(config.DISCORD_TOKEN)
