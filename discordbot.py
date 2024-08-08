@@ -80,6 +80,7 @@ async def download_and_post():
     await client.wait_until_ready()
     channel = client.get_channel(config.CHANNEL_ID)
 
+    print("Checking posts...")
     while not client.is_closed():
         last_check_time = load_last_check_time(last_check_file)
         new_last_check_time = last_check_time
@@ -114,11 +115,12 @@ async def download_and_post():
 
 async def download_and_post_stories():
 
-    
+   
     await client.wait_until_ready()
     channel = client.get_channel(config.CHANNEL_ID)
     check_times = [time(9, 0), time(12, 0), time(15, 0), time(18, 0), time(21, 0), time(0, 0)]
 
+    print("Checking stories...")
     while not client.is_closed():
         now = datetime.now().time()
         next_check = min([datetime.combine(datetime.today(), t) for t in check_times if t > now], default=None)
