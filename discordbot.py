@@ -111,7 +111,7 @@ async def download_and_post():
 
         print("All content has been downloaded.")
 
-        await asyncio.sleep(60)  # 1分ごとに実行
+        await asyncio.sleep(300)  # 5分ごとに実行
 
 async def download_and_post_stories():
 
