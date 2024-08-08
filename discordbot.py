@@ -5,6 +5,25 @@ import asyncio
 import discord
 from moviepy.editor import VideoFileClip
 from datetime import datetime
+
+class CustomInstaloaderContext(instaloader.InstaloaderContext):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_headers = {
+            'User-Agent': 'Instagram 343.0.0.23.93 (iPhone14,7; iOS 17_5_1; en_JP; en-JP; scale=3.00; 1170x2532; 629030903) AppleWebKit/420+',
+        }
+
+    def _send_request(self, req):
+        for header, value in self.custom_headers.items():
+            req.headers[header] = value
+        return super()._send_request(req)
+
+class CustomInstaloader(instaloader.Instaloader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.context = CustomInstaloaderContext(self)
+
+
 # インスタンスを作成
 L = instaloader.Instaloader()
 
@@ -20,8 +39,13 @@ def login():
             raise FileNotFoundError
     except (FileNotFoundError, instaloader.exceptions.ConnectionException):
         print("Logging in...")
-        L.login(config.USER_ID, config.PASSWD)
-        L.save_session_to_file(session_file)
+        try:
+            L.login(config.USER_ID, config.PASSWD)
+            L.save_session_to_file(session_file)
+        except instaloader.exceptions.LoginException as e:
+            print(f"Login failed: {e}")
+            exit(1)  # ログイン失敗時にプログラムを終了
+
 
 login()
 
@@ -93,38 +117,45 @@ async def download_and_post_stories():
     channel = client.get_channel(config.CHANNEL_ID)
 
     while not client.is_closed():
-        login()  # ログインを再確認
-        last_story_check_time = load_last_check_time(last_story_check_file)
-        new_last_story_check_time = last_story_check_time
+        try:
+            print("Checking stories...")
+            print("Logging in...")
+            login()  # ログインを再確認
+            last_story_check_time = load_last_check_time(last_story_check_file)
+            new_last_story_check_time = last_story_check_time
 
-        story_dir = f"{username}_stories"
+            story_dir = f"{username}_stories"
 
-        print("Downloading stories...")
-        stories = []
+            print("Downloading stories...")
+            stories = []
 
-        for story in L.get_stories(userids=[profile.userid]):
-            for item in story.get_items():
-                item_time = item.date_utc
-                if last_story_check_time is None or item_time > last_story_check_time:
-                    if not os.path.exists(story_dir):
-                        os.makedirs(story_dir)
-                    L.download_storyitem(item, target=story_dir)
-                    stories.append(item)
-                    if new_last_story_check_time is None or item_time > new_last_story_check_time:
-                        new_last_story_check_time = item_time
-                else:
-                    break
-        
-        stories.reverse()
-        for story in stories:
-            await post_all_media_to_discord(channel, story_dir, story)
+            for story in L.get_stories(userids=[profile.userid]):
+                for item in story.get_items():
+                    item_time = item.date_utc
+                    if last_story_check_time is None or item_time > last_story_check_time:
+                        if not os.path.exists(story_dir):
+                            os.makedirs(story_dir)
+                        L.download_storyitem(item, target=story_dir)
+                        stories.append(item)
+                        if new_last_story_check_time is None or item_time > new_last_story_check_time:
+                            new_last_story_check_time = item_time
+                    else:
+                        break
+            
+            stories.reverse()
+            for story in stories:
+                await post_all_media_to_discord(channel, story_dir, story)
 
-        if new_last_story_check_time:
-            save_last_check_time(new_last_story_check_time, last_story_check_file)
+            if new_last_story_check_time:
+                save_last_check_time(new_last_story_check_time, last_story_check_file)
 
-        print("All stories have been downloaded.")
-
-        await asyncio.sleep(1800)  # 30分ごとに実行
+            print("All stories have been downloaded.")
+        except instaloader.exceptions.ConnectionException as e:
+            print(f"Connection error: {e}. Waiting before retrying...")
+            await asyncio.sleep(600)  # 10分待機して再試行
+            login()
+ 
+        await asyncio.sleep(600)  # 10分ごとに実行
 
 async def post_all_media_to_discord(channel, post_dir, post):
     post_timestamp = post.date_utc.strftime('%Y-%m-%d_%H-%M-%S')
