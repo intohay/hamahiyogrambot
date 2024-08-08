@@ -8,7 +8,22 @@ from datetime import datetime
 # インスタンスを作成
 L = instaloader.Instaloader()
 
-L.login(config.USER_ID, config.PASSWD)
+# セッションファイルのパス
+session_file = f"{config.USER_ID}_session"
+
+def login():
+    try:
+        if os.path.exists(session_file):
+            print("Loading session from file...")
+            L.load_session_from_file(config.USER_ID, session_file)
+        else:
+            raise FileNotFoundError
+    except (FileNotFoundError, instaloader.exceptions.ConnectionException):
+        print("Logging in...")
+        L.login(config.USER_ID, config.PASSWD)
+        L.save_session_to_file(session_file)
+
+login()
 
 # Instagramのユーザー名
 username = 'hiyotan928_official'
@@ -78,6 +93,7 @@ async def download_and_post_stories():
     channel = client.get_channel(config.CHANNEL_ID)
 
     while not client.is_closed():
+        login()  # ログインを再確認
         last_story_check_time = load_last_check_time(last_story_check_file)
         new_last_story_check_time = last_story_check_time
 
