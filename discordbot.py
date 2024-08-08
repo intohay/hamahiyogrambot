@@ -4,7 +4,7 @@ import config
 import asyncio
 import discord
 from moviepy.editor import VideoFileClip
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 class CustomInstaloaderContext(instaloader.InstaloaderContext):
     def __init__(self, *args, **kwargs):
@@ -113,10 +113,22 @@ async def download_and_post():
         await asyncio.sleep(60)  # 1分ごとに実行
 
 async def download_and_post_stories():
+
+    
     await client.wait_until_ready()
     channel = client.get_channel(config.CHANNEL_ID)
+    check_times = [time(9, 0), time(12, 0), time(15, 0), time(18, 0), time(21, 0), time(0, 0)]
 
     while not client.is_closed():
+        now = datetime.now().time()
+        next_check = min([datetime.combine(datetime.today(), t) for t in check_times if t > now], default=None)
+        if next_check is None:
+            next_check = datetime.combine(datetime.today() + timedelta(days=1), check_times[0])
+        
+        wait_seconds = (next_check - datetime.now()).total_seconds()
+        print(f"Next check at {next_check}. Waiting for {wait_seconds} seconds.")
+        await asyncio.sleep(wait_seconds)
+
         try:
             print("Checking stories...")
             print("Logging in...")
@@ -154,8 +166,7 @@ async def download_and_post_stories():
             print(f"Connection error: {e}. Waiting before retrying...")
             await asyncio.sleep(600)  # 10分待機して再試行
             login()
- 
-        await asyncio.sleep(600)  # 10分ごとに実行
+
 
 async def post_all_media_to_discord(channel, post_dir, post):
     post_timestamp = post.date_utc.strftime('%Y-%m-%d_%H-%M-%S')
