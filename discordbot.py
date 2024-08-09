@@ -162,7 +162,9 @@ async def download_and_post_stories():
             except instaloader.exceptions.ConnectionException as e:
                 print(f"Connection error: {e}. Waiting before retrying...")
                 await asyncio.sleep(600)  # 10分待機して再試行
-                login()
+                # session_fileを削除して再ログイン
+                os.remove(session_file)
+                continue
 
             # 15〜25分のランダムな時間を待機
             wait_seconds = random.randint(15 * 60, 25 * 60)
