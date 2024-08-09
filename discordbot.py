@@ -120,7 +120,7 @@ async def download_and_post_stories():
     channel = client.get_channel(config.CHANNEL_ID)
 
     start_time = time(7, 0)  # 7:00 AM
-    end_time = time(0, 0)    # 24:00 AM (midnight)
+    end_time = time(23, 59)    # 24:00 AM (midnight)
 
     print("Checking stories...")
     while not client.is_closed():
