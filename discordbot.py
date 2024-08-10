@@ -167,7 +167,7 @@ async def download_and_post_stories():
                 continue
 
             # 15〜25分のランダムな時間を待機
-            wait_seconds = random.randint(15 * 60, 25 * 60)
+            wait_seconds = random.randint(60 * 60, 80 * 60)
             print(f"Waiting for {wait_seconds / 60:.2f} minutes before the next check.")
             await asyncio.sleep(wait_seconds)
         else:
