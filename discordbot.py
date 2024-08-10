@@ -159,7 +159,7 @@ async def download_and_post_stories():
                     save_last_check_time(new_last_story_check_time, last_story_check_file)
 
                 print("All stories have been downloaded.")
-            except instaloader.exceptions.ConnectionException as e:
+            except (instaloader.exceptions.ConnectionException, instaloader.exceptions.QueryReturnedBadRequestException) as e:
                 print(f"Connection error: {e}. Waiting before retrying...")
                 await asyncio.sleep(600)  # 10分待機して再試行
                 # session_fileを削除して再ログイン
