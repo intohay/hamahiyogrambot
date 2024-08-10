@@ -55,7 +55,17 @@ login()
 username = 'hiyotan928_official'
 
 # プロファイルをダウンロード
-profile = instaloader.Profile.from_username(L.context, username)
+
+while True:
+    try:
+        profile = instaloader.Profile.from_username(L.context, username)
+        break
+    except (instaloader.exceptions.ConnectionException, instaloader.exceptions.QueryReturnedBadRequestException) as e:
+        await asyncio.sleep(600)
+        continue
+
+
+
 
 
 last_check_file = f"{username}_last_check.txt"
