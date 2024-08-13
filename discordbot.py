@@ -6,7 +6,7 @@ import discord
 from moviepy.editor import VideoFileClip
 from datetime import datetime, time, timedelta
 import random
-import time
+
 
 class CustomInstaloaderContext(instaloader.InstaloaderContext):
     def __init__(self, *args, **kwargs):
@@ -61,6 +61,7 @@ while True:
         profile = instaloader.Profile.from_username(L.context, username)
         break
     except (instaloader.exceptions.ConnectionException, instaloader.exceptions.QueryReturnedBadRequestException) as e:
+        import time
         time.sleep(600)
         continue
 
