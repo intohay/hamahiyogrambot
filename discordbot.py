@@ -93,38 +93,60 @@ async def download_and_post():
     await client.wait_until_ready()
     channel = client.get_channel(config.CHANNEL_ID)
 
+    start_time = time(7, 0)  # 7:00 AM
+    end_time = time(23, 59)  # 11:59 PM
+
     print("Checking posts...")
     while not client.is_closed():
-        last_check_time = load_last_check_time(last_check_file)
-        new_last_check_time = last_check_time
+        now = datetime.now().time()
+        if start_time <= now <= end_time:
+            try:
+                last_check_time = load_last_check_time(last_check_file)
+                new_last_check_time = last_check_time
 
-        post_dir = f"{username}_posts"
+                post_dir = f"{username}_posts"
 
-        print("Downloading posts...")
-        posts = []
+                print("Downloading posts...")
+                posts = []
 
-        for post in profile.get_posts():
-            post_time = post.date_utc
-            if last_check_time is None or post_time > last_check_time:
-                if not os.path.exists(post_dir):
-                    os.makedirs(post_dir)
-                L.download_post(post, target=post_dir)
-                posts.append(post)
-                if new_last_check_time is None or post_time > new_last_check_time:
-                    new_last_check_time = post_time
-            else:
-                break
-        
-        posts.reverse()
-        for post in posts:
-            await post_all_media_to_discord(channel, post_dir, post)
-        
-        if new_last_check_time:
-            save_last_check_time(new_last_check_time, last_check_file)
+                for post in profile.get_posts():
+                    post_time = post.date_utc
+                    if last_check_time is None or post_time > last_check_time:
+                        if not os.path.exists(post_dir):
+                            os.makedirs(post_dir)
+                        L.download_post(post, target=post_dir)
+                        posts.append(post)
+                        if new_last_check_time is None or post_time > new_last_check_time:
+                            new_last_check_time = post_time
+                    else:
+                        break
+                
+                posts.reverse()
+                for post in posts:
+                    await post_all_media_to_discord(channel, post_dir, post)
 
-        print("All content has been downloaded.")
+                if new_last_check_time:
+                    save_last_check_time(new_last_check_time, last_check_file)
 
-        await asyncio.sleep(300)  # 5分ごとに実行
+                print("All content has been downloaded.")
+            except (instaloader.exceptions.ConnectionException, instaloader.exceptions.QueryReturnedBadRequestException) as e:
+                print(f"Connection error: {e}. Waiting before retrying...")
+                await asyncio.sleep(600)  # Wait for 10 minutes before retrying
+                continue
+
+            # Wait for a random time between 60 and 80 minutes before the next check
+            wait_seconds = random.randint(60 * 60, 80 * 60)
+            print(f"Waiting for {wait_seconds / 60:.2f} minutes before the next check.")
+            await asyncio.sleep(wait_seconds)
+        else:
+            # If the current time is out of the specified range, wait until 7:00 AM
+            next_start = datetime.combine(datetime.today(), start_time)
+            if now > start_time:
+                next_start += timedelta(days=1)
+            wait_seconds = (next_start - datetime.now()).total_seconds()
+            print(f"Out of scheduled time range. Waiting for {wait_seconds / 3600:.2f} hours until 7:00 AM.")
+            await asyncio.sleep(wait_seconds)
+
 
 async def download_and_post_stories():
     await client.wait_until_ready()
