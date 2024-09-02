@@ -108,7 +108,7 @@ async def download_and_post():
 
                 print("Downloading posts...")
                 posts = []
-
+                print*("profile.get_posts():", profile.get_posts())
                 for post in profile.get_posts():
                     post_time = post.date_utc
                     if last_check_time is None or post_time > last_check_time:
